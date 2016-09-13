@@ -1,12 +1,50 @@
 ## Firestack
 
+[![Join the chat at https://gitter.im/fullstackreact/react-native-firestack](https://badges.gitter.im/fullstackreact/react-native-firestack.svg)](https://gitter.im/fullstackreact/react-native-firestack?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Firestack makes using the latest [Firebase](http://firebase.com) straight-forward.
 
 ## What
 
-Firestack is a _light-weight_ layer sitting atop the native Firebase libraries for iOS and Android (coming soon), deferring to as much of the JavaScript library as possible. For parts of the api that are natively supported by the Firebase JavaScript api, this library acts as a thin proxy to the JS objects, while it provides a native shim to those that are not covered.
+Firestack is a _light-weight_ layer sitting atop the native Firebase libraries for iOS and Android and mirrors the React Native JS api as closely as possible.
+
+For a detailed discussion of how Firestack works, check out our [contribution guide](https://github.com/fullstackreact/react-native-firestack/blob/master/Contributing.md).
+
+## Features
+
+* Nearly automatic, rapid setup on Firebase
+* Covers lots of awesome features of Firebase:
+  * authentication
+    * username and password
+    * social auth (implemented, but need to add providers)
+  * storage handling
+    * upload files
+    * download urls
+    * download files
+  * real-time database
+  * presence out-of-the-box
+  * analytics
+  * Remote configuration
+* Redux support built-in (but not required)
+* Android and iOS support
+* Community supported and professionally backed
+* Intended on being as drop-dead simple as possible
+* And so much more
+
+## Why?
+
+Firebase is awesome and it's combination with the Google Cloud Platform makes it super awesome. Sadly, the latest version of Firebase requires the `window` object. That's where Firestack comes in! Firestack provides a really thin layer that sits on top of the native Firebase SDKs and attempts to use the JavaScript library as much as possible rather than reinventing the wheel.
 
 ## Installing
+
+Getting `react-native-firestack` up and running in your app should be a 2 step process + 1 for each platform.
+
+1. Install the `npm` package
+2. Link the project with `react-native link react-native-firestack`
+3. Modify the _Build Phases_ for iOS like it says below.
+4. To ensure Android is setup, check your `MainApplication.java` for the `FirestackPackage()` line.
+
+Those steps in more detail:
 
 Install the `npm` package with:
 
@@ -16,17 +54,29 @@ npm install react-native-firestack --save
 
 To use Firestack, we'll need to have a development environment that includes the same prerequisites of Firebase.
 
+Regardless of which linking you choose to run with, it is _very_ important to "embed" the framework `libFirestack.a` in your application. Until we can find an automated way of handling this, *this needs to be done manually*.
+
+#### iOS will _not_ be able to find `libFirestack.a` if you forget this step.
+
+Find your application tab in Xcode, click on `Build Phases`. In there, find the build phase of `Embed Frameworks` and click the `+` button and add `libFirestack.a` to the list. Make sure the `Code Sign on Copy` checkbox is ticked on and the destination is Frameworks with an empty subpath.
+
+> If you do not see an `Embed Frameworks` build phase, do not fret! Click on the plus button on the build phases menu and select `New Copy Files Phase`. Make sure the destination is set to `Frameworks` and it'll be the same thing as the `Embed Frameworks` phase.
+
+![Embed frameworks](http://d.pr/i/1aZq5.png)
+
 ### iOS
 
 We need to link the package with our development packaging. We have two options to handle linking:
 
-#### Automatically with [rnpm](https://github.com/rnpm/rnpm)
+#### Automatically with react-native-cli
 
-[rnpm](https://github.com/rnpm/rnpm) is a React Native package manager which can help to automate the process of linking package environments.
+React native ships with a `link` command that can be used to link the projects together, which can help automate the process of linking our package environments.
 
 ```bash
-rnpm link
+react-native link react-native-firestack
 ```
+
+Firestack will automatically pull in all of the Firebase requirements and link Firebase to our own project.
 
 #### Manually
 
@@ -51,17 +101,47 @@ If you prefer not to use `rnpm`, we can manually link the package together with 
 
 ![Recursive paths](http://d.pr/i/1hAr1.png)
 
-#### Cocoapods
-
-You can also install `Firestack` as a cocoapod by adding the line to your `ios/Podfile`
-
-```ruby
-pod 'Firestack'
-```
-
 ### Android
 
-Coming soon
+Full Android support is coming soon, as it currently supports a smaller feature-set than the iOS version. Just as we do with iOS, we'll need to install the library using `npm` and call `link` on the library:
+
+```bash
+react-native link react-native-firestack
+```
+
+Firestack includes the Firebase libraries and will link those directly into our project automatically.
+
+#### Manually
+
+To install `react-native-firestack` manually in our project, we'll need to import the package from `io.fullstack.firestack` in our project's `android/app/src/main/java/com/[app name]/MainApplication.java` and list it as a package for ReactNative in the `getPackages()` function:
+
+```java
+package com.appName;
+// ...
+import io.fullstack.firestack.FirestackPackage;
+// ...
+public class MainApplication extends Application implements ReactApplication {
+    // ...
+
+    @Override
+    protected List<ReactPackage> getPackages() {
+      return Arrays.<ReactPackage>asList(
+          new MainReactPackage(),
+            new FirestackPackage()
+      );
+    }
+  };
+  // ...
+}
+```
+
+We'll also need to list it in our `android/app/build.gradle` file as a dependency that we want React Native to compile. In the `dependencies` listing, add the `compile` line:
+
+```java
+dependencies {
+  compile project(':react-native-firestack')
+}
+```
 
 ## Firebase setup
 
@@ -75,15 +155,19 @@ Each platform uses a different setup method after creating the project.
 
 ### iOS
 
-After creating a Firebase project, click on the [Add Firebase to your iOS app](http://d.pr/i/3sEL.png) and follow the steps from there.
+After creating a Firebase project, click on the [Add Firebase to your iOS app](http://d.pr/i/3sEL.png) and follow the steps from there to add the configuration file. You do _not_ need to set up a cocoapods project (this is already done through firestack). Make sure not to forget the `Copy Files` phase in iOS. 
 
-**[IMPORTANT: Download the config file](https://support.google.com/firebase/answer/7015592)**
+[Download the Firebase config file](https://support.google.com/firebase/answer/7015592) (this step is optional, but prevents some ugly errors in the console). 
 
 Once you download the configuration file, make sure you place it in the root of your Xcode project. Every different Bundle ID (aka, even different project variants needs their own configuration file).
 
+Lastly, due to some dependencies requirements, Firestack supports iOS versions 8.0 and up. Make sure to update the minimum version of your iOS app to `8.0`. 
+
 ### Android
 
-Coming soon
+There are several ways to setup Firebase on Android. The _easiest_ way is to pass the configuration settings in JavaScript. In that way, there is no setup for the native platform. 
+
+If you prefer to include the default settings in the source of your app, download the `google-services.json` file provided by Firebase in the _Add Firebase to Android_ platform menu in your Firebase configuration console.
 
 ## Usage
 
@@ -96,10 +180,41 @@ import Firestack from 'react-native-firestack'
 We need to tell the Firebase library we want to _configure_ the project. Firestack provides a way to configure both the native and the JavaScript side of the project at the same time with a single command:
 
 ```javascript
-const server = new Firestack();
-server.configure()
-  .then(() => console.log("Project configured and ready to boot"));
+const firestack = new Firestack();
 ```
+
+We can pass _custom_ options by passing an object with configuration options. The configuration object will be generated first by the native configuration object, if set and then will be overridden if passed in JS. That is, all of the following key/value pairs are optional if the native configuration is set.
+
+| option           | type | Default Value           | Description                                                                                                                                                                                                                                                                                                                                                      |
+|----------------|----------|-------------------------|----------------------------------------|
+| debug | bool | false | When set to true, Firestack will log messages to the console and fire `debug` events we can listen to in `js` |
+| bundleID | string | Default from app `[NSBundle mainBundle]` | The bundle ID for the app to be bundled with |
+| googleAppID | string | "" | The Google App ID that is used to uniquely identify an instance of an app. |
+| databaseURL | string | "" | The database root (i.e. https://my-app.firebaseio.com) |
+| deepLinkURLScheme | string | "" | URL scheme to set up durable deep link service |
+| storageBucket | string | "" | The Google Cloud storage bucket name |
+| androidClientID | string | "" | The Android client ID used in Google AppInvite when an iOS app has it's android version |
+| GCMSenderID | string | "" | The Project number from the Google Developer's console used to configure Google Cloud Messaging |
+| trackingID | string | "" | The tracking ID for Google Analytics |
+| clientID | string | "" | The OAuth2 client ID for iOS application used to authenticate Google Users for signing in with Google |
+| APIKey | string | "" | The secret iOS API key used for authenticating requests from our app |
+
+For instance:
+
+```javascript
+const configurationOptions = {
+  debug: true,
+  googleAppID: 'sticker-me'
+};
+const firestack = new Firestack(configurationOptions);
+firestack.on('debug', msg => console.log('Received debug message', msg))
+```
+
+In _most_ cases, you shouldn't need to overwrite these configuration options, but they are available to you if necessary.
+
+**Options passed to the `Firestack` constructor take precedence over the native configuration to allow the JS to define custom variables on a per-platform basis**
+
+## API documentation
 
 Firestack is broken up into multiple parts, based upon the different API features that Firebase provides.
 
@@ -114,7 +229,7 @@ Firestack handles authentication for us out of the box, both with email/password
 Firebase gives us a reactive method for listening for authentication. That is we can set up a listener to call a method when the user logs in and out. To set up the listener, call the `listenForAuth()` method:
 
 ```javascript
-server.listenForAuth(function(evt) {
+firestack.listenForAuth(function(evt) {
   // evt is the authentication event
   // it contains an `error` key for carrying the
   // error message in case of an error
@@ -135,7 +250,7 @@ server.listenForAuth(function(evt) {
 We can remove this listener by calling the `unlistenForAuth()` method. This is important to release resources from our app when we don't need to hold on to the listener any longer.
 
 ```javascript
-server.unlistenForAuth()
+firestack.unlistenForAuth()
 ```
 
 #### createUserWithEmail()
@@ -143,7 +258,7 @@ server.unlistenForAuth()
 We can create a user by calling the `createUserWithEmail()` function. The `createUserWithEmail()` accepts two parameters, an email and a password.
 
 ```javascript
-server.createUserWithEmail('ari@fullstack.io', '123456')
+firestack.createUserWithEmail('ari@fullstack.io', '123456')
   .then((user) => {
     console.log('user created', user)
   })
@@ -157,7 +272,21 @@ server.createUserWithEmail('ari@fullstack.io', '123456')
 To sign a user in with their email and password, use the `signInWithEmail()` function. It accepts two parameters, the user's email and password:
 
 ```javascript
-server.signInWithEmail('ari@fullstack.io', '123456')
+firestack.signInWithEmail('ari@fullstack.io', '123456')
+  .then((user) => {
+    console.log('User successfully logged in', user)
+  })
+  .catch((err) => {
+    console.error('User signin error', err);
+  })
+```
+
+#### signInWithCustomToken()
+
+To sign a user using a self-signed custom token, use the `signInWithCustomToken()` function. It accepts one parameter, the custom token:
+
+```javascript
+firestack.signInWithCustomToken(TOKEN)
   .then((user) => {
     console.log('User successfully logged in', user)
   })
@@ -168,20 +297,84 @@ server.signInWithEmail('ari@fullstack.io', '123456')
 
 #### signInWithProvider()
 
-We can use an external authentication provider, such as twitter/facebook for authentication. In order to use an external provider, we need to include another library.
+We can use an external authentication provider, such as twitter/facebook for authentication. In order to use an external provider, we need to include another library to handle authentication.
 
-...
+> By using a separate library, we can keep our dependencies a little lower and the size of the application down.
+
+### OAuth setup with library
+
+We'll use the [react-native-oauth](https://github.com/fullstackreact/react-native-oauth) library, which was built along-side [Firestack](https://github.com/fullstackreact/react-native-firestack) specifically to handle authentication through third-party providers.
+
+> If you prefer to use another library, make sure you pass through the `oauthToken` and `oauthTokenSecret` provided by your other library to call the `signInWithProvider()` method.
+
+Following the instructions on the [react-native-oauth README](https://github.com/fullstackreact/react-native-oauth), we'll need to install it using `npm`:
+
+```javascript
+npm install --save react-native-oauth
+```
+
+It's important to set up the authentication library fully with our app configuration. Make sure to configure your app [along with this step](https://github.com/fullstackreact/react-native-oauth#handle-deep-linking-loading) otherwise authentication _cannot_ work.
+
+Once the app is configured with the instructions, we can call the `oauthManager`'s (or other library's) login method. We'll need to hold on to the `oauthToken` and an `oauthTokenSecret` provided by the provider. Using these values, we can call the `signInWithProvider()` method. The `signInWithProvider()` method accepts three parameters:
+
+1. The provider (such as `twitter`, `facebook`, etc) name
+2. The `authToken` value granted by the provider
+3. The `authTokenSecret` value granted by the provider
+
+```javascript
+// For instance, using the react-native-oauth library, this process
+// looks like:
+
+const appUrl = 'app-uri://oauth-callback/twitter'
+authManager.authorizeWithCallbackURL('twitter', appUrl)
+.then(creds => {
+  return firestack.signInWithProvider('twitter', creds.oauth_token, creds.oauth_token_secret)
+    .then(() => {
+      // We're now signed in through Firebase
+    })
+    .catch(err => {
+      // There was an error
+    })
+})
+```
+
+### socialLogin with custom Library
+If you don't want to use [react-native-oauth](https://github.com/fullstackreact/react-native-oauth), you can use other library such as [react-native-facebook-login](https://github.com/magus/react-native-facebook-login). 
+
+```javascript
+var {FBLogin, FBLoginManager} = require('react-native-facebook-login');
+
+var Login = React.createClass({
+  render: function() {
+    return (
+      <FBLogin 
+        onLogin={function(data){
+          console.log("Logged in!");
+          console.log(data);
+          let token = data.credentials.token
+          firestack.signInWithProvider('facebook', token, '') // facebook need only access token.
+            .then((user)=>{
+              console.log(user)
+            })
+        }}
+      />
+    );
+  }
+});
+```
+
+If the `signInWithProvider()` method resolves correct and we have already set up our `listenForAuth()` method properly, it will fire and we'll have a logged in user through Firebase.
 
 ### reauthenticateWithCredentialForProvider()
 
-...
+When the auth token has expired, we can ask firebase to reauthenticate with the provider. This method accepts the _same_ arguments as `signInWithProvider()` accepts.
 
 #### updateUserEmail()
 
 We can update the current user's email by using the command: `updateUserEmail()`. It accepts a single argument: the user's new email:
 
 ```javascript
-server.updateUserEmail('ari+rocks@fullstack.io')
+firestack.updateUserEmail('ari+rocks@fullstack.io')
   .then((res) => console.log('Updated user email'))
   .catch(err => console.error('There was an error updating user email'))
 ```
@@ -191,7 +384,7 @@ server.updateUserEmail('ari+rocks@fullstack.io')
 We can update the current user's password using the `updateUserPassword()` method. It accepts a single parameter: the new password for the current user
 
 ```javascript
-server.updateUserPassword('somethingReallyS3cr3t733t')
+firestack.updateUserPassword('somethingReallyS3cr3t733t')
   .then(res => console.log('Updated user password'))
   .catch(err => console.error('There was an error updating your password'))
 ```
@@ -201,7 +394,7 @@ server.updateUserPassword('somethingReallyS3cr3t733t')
 To send a password reset for a user based upon their email, we can call the `sendPasswordResetWithEmail()` method. It accepts a single parameter: the email of the user to send a reset email.
 
 ```javascript
-server.sendPasswordResetWithEmail('ari+rocks@fullstack.io')
+firestack.sendPasswordResetWithEmail('ari+rocks@fullstack.io')
   .then(res => console.log('Check your inbox for further instructions'))
   .catch(err => console.error('There was an error :('))
 ```
@@ -215,7 +408,7 @@ It accepts a single parameter:
 * object which contains updated key/values for the user's profile. Possible keys are listed [here](https://firebase.google.com/docs/auth/ios/manage-users#update_a_users_profile).
 
 ```javascript
-server.updateUserProfile({
+firestack.updateUserProfile({
   displayName: 'Ari Lerner'
 })
   .then(res => console.log('Your profile has been updated'))
@@ -227,9 +420,19 @@ server.updateUserProfile({
 It's possible to delete a user completely from your account on Firebase. Calling the `deleteUser()` method will take care of this for you.
 
 ```javascript
-server.deleteUser()
+firestack.deleteUser()
 .then(res => console.log('Sad to see you go'))
 .catch(err => console.error('There was an error - Now you are trapped!'))
+```
+
+#### getToken()
+
+If you want user's token, use `getToken()` method.
+
+```javascript
+firestack.getToken()
+.then(res => console.log(res.token))
+.catch(err => console.error('error'))
 ```
 
 #### signOut()
@@ -237,7 +440,7 @@ server.deleteUser()
 To sign the current user out, use the `signOut()` method. It accepts no parameters
 
 ```javascript
-server.signOut()
+firestack.signOut()
 .then(res => console.log('You have been signed out'))
 .catch(err => console.error('Uh oh... something weird happened'))
 ```
@@ -247,7 +450,7 @@ server.signOut()
 Although you _can_ get the current user using the `getCurrentUser()` method, it's better to use this from within the callback function provided by `listenForAuth()`. However, if you need to get the current user, call the `getCurrentUser()` method:
 
 ```javascript
-server.getCurrentUser()
+firestack.getCurrentUser()
 .then(user => console.log('The currently logged in user', user))
 .catch(err => console.error('An error occurred'))
 ```
@@ -259,7 +462,7 @@ Wouldn't it be nice to send analytics about your app usage from your users? Well
 #### logEventWithName()
 
 ```javascript
-server.logEventWithName("launch", {
+firestack.logEventWithName("launch", {
   'screen': 'Main screen'
 })
 .then(res => console.log('Sent event named launch'))
@@ -279,17 +482,19 @@ In order to store anything on Firebase, we need to set the storage url provided 
 The `setStorageUrl()` method accepts a single parameter: your root storage url.
 
 ```javascript
-server.setStorageUrl(`gs://${config.firebase.storageBucket}`)
+firestack.setStorageUrl(`gs://${config.firebase.storageBucket}`)
 .then(() => console.log('The storage url has been set'))
 .catch(() => console.error('This is weird: something happened...'))
 ```
+
+If the `storageBucket` key is passed as a configuration option, this method is automatically called by default.
 
 #### uploadFile()
 
 We can upload a file using the `uploadFile()` method. Using the `uploadFile()` method, we can set the name of the destination file, the path where we want to store it, as well as any metadata along with the file.
 
 ```javascript
-server.uploadFile(`photos/${auth.user.uid}/${filename}`, path, {
+firestack.storage.uploadFile(`photos/${auth.user.uid}/${filename}`, path, {
   contentType: 'image/jpeg',
   contentEncoding: 'base64',
 })
@@ -302,7 +507,7 @@ To upload camera photos, we can combine this method with the `react-native-camer
 ```javascript
 this.camera.capture()
 .then(({path}) => {
-  server.uploadFile(`photos/${auth.user.uid}/${filename}`, path, {
+  firestack.uploadFile(`photos/${auth.user.uid}/${filename}`, path, {
     contentType: 'image/jpeg',
     contentEncoding: 'base64',
   })
@@ -310,18 +515,63 @@ this.camera.capture()
 .catch(err => console.error(err));
 ```
 
-#### storage attribute
-
-To retrieve a stored file, we can get the url to download it from using the `storage` attribute. This method allows us to call right through to the native JavaScript object provided by the Firebase library:
+To combine the `react-native-camera` plugin with firestack, we recommend setting the `captureTarget` to the `temp` storage path, like so:
 
 ```javascript
-server.storage.ref(photo.fullPath)
-.getDownloadURL()
-  .then(url => {
-    // url contains the download url
-  }).catch(err => {
-    console.error('Error downloading photo', err);
-  })
+<Camera
+  ref={(cam) => {
+    this.camera = cam;
+  }}
+  captureTarget={Camera.constants.CaptureTarget.temp}
+  style={styles.preview}
+  aspect={Camera.constants.Aspect.fill}>
+    <Text style={styles.capture} onPress={this.takePicture.bind(this)}>[CAPTURE]</Text>
+</Camera>
+```
+
+Firestack also gives you the ability to listen for database events on upload. The final parameter the `uploadFile()` function accepts is a callback that will be called anytime a storage event is fired.
+
+The following events are supported:
+
+* upload_progress
+* upload_paused
+* upload_resumed
+
+For example, the `takePicture` function from the example above might look something similar to:
+
+```javascript
+takePicture() {
+  this.camera.capture()
+    .then(({path}) => {
+      const filename = 'photo.jpg'
+      firestack.uploadFile(`photos/${filename}`, path, {
+        contentType: 'image/jpeg',
+        contentEncoding: 'base64',
+      }, (evt) => {
+        console.log('Got an event in JS', evt);
+      })
+      .then((res) => {
+        console.log('result from upload file: ', res);
+      })
+      .catch((err) => {
+        console.log('error happened with uploadFile', err);
+      })
+    })
+    .catch(err => console.error(err));
+}
+```
+
+#### downloadUrl()
+
+The `downloadUrl()` method allows us to fetch the URL from the storage obejct in Firebase. It's defined on the `storageRef` object and can be used like so:
+
+```javascript
+const storageRef = data.firestack.storage.ref('photos/photo.jpg');
+storageRef.downloadUrl()
+.then(res => {
+  // res is an object that contains
+  // the `url` as well as the path to the file in `path`
+})
 ```
 
 ### Realtime Database
@@ -331,9 +581,8 @@ server.storage.ref(photo.fullPath)
 The native Firebase JavaScript library provides a featureful realtime database that works out of the box. Firestack provides an attribute to interact with the database without needing to configure the JS library.
 
 ```javascript
-server.storage
+firestack.database
       .ref(LIST_KEY)
-      .orderByChild('timestamp')
       .on('value', snapshot => {
         if (snapshot.val()) {
           console.log('The list was updated');
@@ -341,12 +590,81 @@ server.storage
       });
 ```
 
+#### DatabaseRef
+
+Firestack attempts to provide the same API as the JS Firebase library for both Android and iOS platforms.
+
+// TODO: Finish documenting
+
+#### Offline data persistence
+
+For handling offline operations, you can enable persistence by using the `setPersistence()` command. You can turn it on and off by passing the boolean of `true` or `false`.
+
+```javascript
+firestack.database.setPersistence(true);
+```
+
+The database refs has a `keepSynced()` function to tell the firestack library to keep the data at the `ref` in sync. 
+
+```javascript
+const ref = firestack.database
+            .ref('chat-messages')
+            .child('roomId');
+ref.keepSynced(true);
+```
+
+### Presence
+
+Firestack comes in with a built-in method for handling user connections. We just need to set the presence ref url and tell Firestack to keep track of the user by their child path.
+
+```javascript
+firestack.presence          // the presence api
+  .on('users/connections')  // set the users/connections as the
+                            // root for presence handling
+  .setOnlineFor('auser')    // Set the child of auser as online
+```
+
+While the _device_ is online (the connection), the value of the child object at `users/connections/auser` will be:
+
+```javascript
+{
+  online: true,
+  lastOnline: TIMESTAMP
+}
+```
+
+When the device is offline, the value will be updated with `online: false`:
+
+```javascript
+{
+  online: false,
+  lastOnline: TIMESTAMP
+}
+```
+
+To set up your own handlers on the presence object, you can call `onConnect()` and pass a callback. The method will be called with the `connectedDevice` database reference and you can set up your own handlers:
+
+```javascript
+const presence = firestack.presence
+                          .on('users/connections');
+presence.onConnect((ref) => {
+  ref.onDisconnect().remove(); // Remove the entry
+  // or
+  ref.set({
+    location: someLocation
+  });
+  // or whatever you want as it's called with the database
+  // reference. All methods on the DatabaseRef object are
+  // available here on the `ref`
+})
+```
+
 ### ServerValue
 
 Firebase provides some static values based upon the server. We can use the `ServerValue` constant to retrieve these. For instance, to grab the TIMESTAMP on the server, use the `TIMESTAMP` value:
 
 ```javascript
-const timestamp = server.ServerValue.TIMESTAMP
+const timestamp = firestack.ServerValue.TIMESTAMP
 ```
 
 ### Events
@@ -356,7 +674,7 @@ const timestamp = server.ServerValue.TIMESTAMP
 We can listen to arbitrary events fired by the Firebase library using the `on()` method. The `on()` method accepts a name and a function callback:
 
 ```javascript
-server.on('listenForAuth', (evt) => console.log('Got an event'));
+firestack.on('listenForAuth', (evt) => console.log('Got an event'));
 ```
 
 #### off()
@@ -364,12 +682,33 @@ server.on('listenForAuth', (evt) => console.log('Got an event'));
 To unsubscribe to events fired by Firebase, we can call the `off()` method with the name of the event we want to unsubscribe.
 
 ```javascript
-server.off('listenForAuth');
+firestack.off('listenForAuth');
 ```
 
+## FirestackModule
+
+Firestack provides a built-in way to connect your Redux app using the `FirestackModule` export from Firestack.
+
+
+## Contributing
+
+This is _open-source_ software and we can make it rock for everyone through contributions.
+
+```shell
+git clone https://github.com/fullstackreact/react-native-firestack.git
+cd react-native-firestack
+npm install
+```
 
 ## TODO
 
 The following is left to be done:
 
-* Add Android support
+- [x] Complete FirebaseModule functionality
+- [ ] Document FirebaseModule
+- [ ] Add Android support
+  - in progress
+- [x] Add Cloud Messaging
+  - [ ] Add JS api
+- [ ] Move to use swift (cleaner syntax)
+- [ ] TODO: Finish Facebook integration
